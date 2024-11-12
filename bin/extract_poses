@@ -1,0 +1,34 @@
+#!/bin/bash                                                                                                                                    
+# Description: This script reads docking poses from a pdbqt file and writes them in separate pdbqt files.
+# Version: 2024.11
+# Author: Jaxxlike_Big5699 (https://www.reddit.com/r/bioinformatics/comments/1boao10/autodock_vina_from_pdbqt_to_pdb/lfk7yg9/)
+# Usage: ./extract_poses <input_file.pdbqt>
+
+if [ "$#" -ne 1 ]; then
+  echo "Usage: $0 <input_file.pdbqt>"
+  exit 1
+fi
+
+input_file="$1"
+base_name="${input_file%%.*}"
+
+if [ ! -f "$input_file" ]; then
+  echo "File $input_file not found!"
+  exit 1
+fi
+
+awk -v base="$base_name" '
+    /^MODEL/ {
+        if (NR > 1) {
+            close(outfile)
+        }
+        outfile = base "_model" ++model_num ".pdbqt"
+        print > outfile
+    }
+    { print > outfile }
+    END {
+        close(outfile)
+    }
+' "$input_file"
+
+echo "Done!"
