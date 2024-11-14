@@ -1,0 +1,12 @@
+#!/usr/bin/bash
+# Description: This script fetches a PDB file from its id.
+# Version: 2024.11
+# Author: Giulio De Matteis
+# Usage: ./pdbfetch <PDB>
+
+if [ "$#" -ne 1 ]; then
+  echo "Usage: $0 <PDB>"
+  exit 1
+fi
+
+wget https://files.rcsb.org/download/$1.pdb
