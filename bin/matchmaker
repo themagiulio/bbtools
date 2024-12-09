@@ -1,134 +1,130 @@
 #!/usr/bin/env python3
-# Description: This script aligns a trajectory to a reference structure considering only the common residues within a selection that, by default, consists of all CA.
-# Version: 2024.11
+# Description: This script aligns a structure to a reference one considering only the common residues within a selection that, by default, consists of all CA.
+# Version: 2024.12
 # Author: Giulio De Matteis
-# Usage: ./matchmaker -p <input_topology.prmtop> -y <input_trajectory.xtc> -x <output_trajectory.xtc> -c <input_reference.pdb> --sel1 <sel_str_1> --sel2 <sel_str_2>
+# Usage: ./matchmaker -r <reference_structure> -m <mobile_structure> -sr <reference_structure_sel_str> -sm <mobile_structure_sel_str>
 
 import warnings
 
 warnings.filterwarnings("ignore")
 
 import argparse
+import os
 import MDAnalysis as mda
 from Bio import pairwise2
 from MDAnalysis.analysis import align
 
-
-def get_common_atoms(
-    u1: mda.Universe,
-    u2: mda.Universe,
-    sel_str1: str,
-    sel_str2: str,
-) -> (mda.AtomGroup, mda.AtomGroup):
-    # Select atoms
-    sel1 = u1.select_atoms(sel_str1)
-    sel2 = u2.select_atoms(sel_str2)
-
-    # Select residues
-    sel1_residues = sel1.residues
-    sel2_residues = sel2.residues
-
-    # Define aminoacids 3 to 1 letter codes
-    custom_residue_map = {
-        "ALA": "A",
-        "CYS": "C",
-        "ASP": "D",
-        "GLU": "E",
-        "PHE": "F",
-        "GLY": "G",
-        "HIS": "H",
-        "ILE": "I",
-        "LYS": "K",
-        "LEU": "L",
-        "MET": "M",
-        "ASN": "N",
-        "PRO": "P",
-        "GLN": "Q",
-        "ARG": "R",
-        "SER": "S",
-        "THR": "T",
-        "VAL": "V",
-        "TRP": "W",
-        "TYR": "Y",
-        "HIP": "H",
-        "HIE": "H",
-        "HID": "H",  # Non-standard histidine residues
-        # Add any other non-standard residues here
-    }
-
-    # Get primary sequence
-    seq1 = "".join(
-        [custom_residue_map.get(residue.resname, "X") for residue in sel1.residues]
-    )
-    seq2 = "".join(
-        [custom_residue_map.get(residue.resname, "X") for residue in sel2.residues]
-    )
-
-    # Align sequences
-    alignments = pairwise2.align.globalxx(seq1, seq2)
-
-    # Get best alignment
-    alignment = alignments[0]
-
-    aligned_seq1 = alignment[0]
-    aligned_seq2 = alignment[1]
-
-    residue_ids1 = []
-    residue_ids2 = []
-
-    # Iterate over the aligned sequences and map them to the residue IDs
-    i = 0
-    for a1, a2 in zip(aligned_seq1, aligned_seq2):
-        if a1 != "-":
-            residue_ids1.append(sel1_residues[i].resid)
-            residue_ids2.append(sel2_residues[i].resid)
-            i += 1
-
-    return (
-        sel1.select_atoms(sel_str1 + " and resid " + " ".join(map(str, residue_ids1))),
-        sel2.select_atoms(sel_str2 + " and resid " + " ".join(map(str, residue_ids2))),
-    )
-
-
-def make_sel_str(atoms: mda.AtomGroup) -> str:
-    return "id " + " ".join(map(str, [atom.id for atom in atoms]))
-
+custom_residue_map = {
+    "ALA": "A",
+    "CYS": "C",
+    "ASP": "D",
+    "GLU": "E",
+    "PHE": "F",
+    "GLY": "G",
+    "HIS": "H",
+    "ILE": "I",
+    "LYS": "K",
+    "LEU": "L",
+    "MET": "M",
+    "ASN": "N",
+    "PRO": "P",
+    "GLN": "Q",
+    "ARG": "R",
+    "SER": "S",
+    "THR": "T",
+    "VAL": "V",
+    "TRP": "W",
+    "TYR": "Y",
+    "HIP": "H",
+    "HIE": "H",
+    "HID": "H",
+}
 
 if __name__ == "__main__":
     # Argument parser
     parser = argparse.ArgumentParser()
 
     # Define arguments
-    parser.add_argument("-p", help="Input topology file.", type=str, required=True)
-    parser.add_argument("-y", help="Input trajectory file.", type=str, required=True)
-    parser.add_argument("-x", help="Output trajectory file.", type=str)
-    parser.add_argument("-c", help="Input reference file.", type=str, required=True)
-    parser.add_argument("--sel1", help="Selection string.", type=str, default="name CA")
-    parser.add_argument("--sel2", help="Selection string.", type=str, default="name CA")
+    parser.add_argument("-r", help="Reference structure file.", type=str, required=True)
+    parser.add_argument("-m", help="Mobile structure file.", type=str, required=True)
+    parser.add_argument("-sr", help="Reference's atoms selection.", type=str, default="name CA")
+    parser.add_argument("-sm", help="Mobile's atoms selection.", type=str, default="name CA")
 
     # Parse arguments
     args = parser.parse_args()
 
     # Create reference universe
-    u_ref = mda.Universe(args.c)
+    u1 = mda.Universe(args.r)
 
-    # Load trajectory
-    u = mda.Universe(args.p, args.y)
+    # Create mobile universe
+    u2 = mda.Universe(args.m)
 
-    # Get common atoms as a selection string
-    atoms1, atoms2 = get_common_atoms(u_ref, u, args.sel1, args.sel2)
-    sel_str1 = make_sel_str(atoms1)
-    sel_str2 = make_sel_str(atoms2)
+    # Select residues
+    sel1_residues = u1.select_atoms(args.sr).residues
+    sel2_residues = u2.select_atoms(args.sm).residues
 
-    # Align trajectory to reference
-    align.AlignTraj(
-        u,
-        u_ref,
+    # Get primary sequence
+    seq1 = "".join(
+        [custom_residue_map.get(residue.resname, "X") for residue in sel1_residues]
+    )
+    seq2 = "".join(
+        [custom_residue_map.get(residue.resname, "X") for residue in sel2_residues]
+    )
+
+    # Align sequences
+    alignments = pairwise2.align.globalxx(seq1, seq2)
+                                                                                                                                                                    
+    # Get best alignment
+    alignment = alignments[0]
+
+    seq1_aligned = alignment[0]
+    seq2_aligned = alignment[1]
+
+    # Get "common" residues (residues can be different)
+    resid1_residues_aligned = []
+    resid2_residues_aligned = []
+
+    i = 0
+    j = 0
+
+    for a1, a2 in zip(seq1_aligned, seq2_aligned):
+        if a1 == a2:
+            # Match
+            resid1_residues_aligned.append(sel1_residues[i].resid)
+            resid2_residues_aligned.append(sel2_residues[j].resid)
+            i += 1
+            j += 1
+        elif a1 != a2 and a1 != "-" and a2 != "-":
+            # Mismatch
+            resid1_residues_aligned.append(sel1_residues[i].resid)
+            resid2_residues_aligned.append(sel2_residues[j].resid)
+            i += 1
+            j += 1
+        else:
+            # Gap
+            if a2 == "-":
+                i += 1
+
+            if a1 == "-":
+                j += 1
+
+
+    # Make sel str
+    sel1_str = args.sr + " and resid " + " ".join(map(str, resid1_residues_aligned))
+    sel2_str = args.sm + " and resid " + " ".join(map(str, resid2_residues_aligned))
+
+    # Align mobile (2) to reference (1)
+    align.alignto(
+        u2, u1,
+        match_atoms=False,
         select={
-            "reference": sel_str1,
-            "mobile": sel_str2,
+            "reference": sel1_str,
+            "mobile": sel2_str,
         },
-        filename=args.x,
-    ).run()
+    )
+
+    # Write output
+    name, ext = os.path.splitext(args.m)
+    u2.atoms.write(name + "_aligned.pdb")
 
     print("Done!")
