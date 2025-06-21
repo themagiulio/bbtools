@@ -1,0 +1,50 @@
+#!/usr/bin/env python3
+# Description: This script converts a string of three letters to one letter amino acids.
+# Version: 2024.06
+# Author: Giulio De Matteis
+# Usage: ./tto <string>
+
+import sys
+
+amino_acids = {
+    "Ala": "A",  # Alanine
+    "Arg": "R",  # Arginine
+    "Asn": "N",  # Asparagine
+    "Asp": "D",  # Aspartic acid
+    "Cys": "C",  # Cysteine
+    "Glu": "E",  # Glutamic acid
+    "Gln": "Q",  # Glutamine
+    "Gly": "G",  # Glycine
+    "His": "H",  # Histidine
+    "Ile": "I",  # Isoleucine
+    "Leu": "L",  # Leucine
+    "Lys": "K",  # Lysine
+    "Met": "M",  # Methionine
+    "Phe": "F",  # Phenylalanine
+    "Pro": "P",  # Proline
+    "Ser": "S",  # Serine
+    "Thr": "T",  # Threonine
+    "Trp": "W",  # Tryptophan
+    "Tyr": "Y",  # Tyrosine
+    "Val": "V",  # Valine
+    "Sec": "U",  # Selenocysteine
+    "Pyl": "O",  # Pyrrolysine
+}
+
+if __name__ == "__main__":
+    if len(sys.argv) != 2:
+        print(f"Usage: {sys.argv[0]} <string>")
+        exit(1)
+
+    inp = sys.argv[1].replace(" ", "")
+    inp = [inp[i : i + 3] for i in range(0, len(inp), 3)]
+
+    for a in inp:
+        a = a.title()
+
+        if a not in amino_acids:
+            print("-", end=" ")
+        else:
+            print(amino_acids[a], end=" ")
+
+    print("")
