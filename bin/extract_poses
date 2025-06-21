@@ -1,4 +1,4 @@
-#!/bin/bash                                                                                                                                    
+#!/bin/bash                                                                                                                                   
 # Description: This script reads docking poses from a pdbqt file and writes them in separate pdbqt files.
 # Version: 2024.11
 # Author: Jaxxlike_Big5699 (https://www.reddit.com/r/bioinformatics/comments/1boao10/autodock_vina_from_pdbqt_to_pdb/lfk7yg9/)

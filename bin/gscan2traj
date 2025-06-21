@@ -1,0 +1,45 @@
+#!/usr/bin/bash
+# Description: This script converts a scan made with Gaussian to a MD trajectory.
+# Version: 2024.01
+# Author: Giulio De Matteis
+# Usage: ./gscan2traj <input_file.log>
+
+GLOG=$1
+
+# Convert Gaussian log file to xyz
+python3 $BBTOOLS_HOME/lib/gaussian2xyz.py $GLOG scan > traj.work.xyz
+
+# Get number of atoms
+natoms=$(head -n 1 traj.work.xyz)
+
+# Split xyz into different files
+csplit -z traj.work.xyz /^${natoms}$/ '{*}' --prefix conf_
+
+# Create topology
+obabel conf_00 -i xyz -O topology.mol2
+
+# Create trajectory
+echo "parm topology.mol2" > mktraj.in
+
+for f in conf_*; do
+  echo "trajin $f" >> mktraj.in
+done
+
+echo "trajout scan.xtc" >> mktraj.in
+
+echo "run" >> mktraj.in
+echo "quit" >> mktraj.in
+
+cpptraj -i mktraj.in
+
+# Clean
+rm traj.work.xyz
+rm conf_*
+rm mktraj.in
+
+echo ""
+
+echo "-----------------------"
+echo "Topology: topology.mol2"
+echo "Trajectory: scan.xyz"
+echo "-----------------------"

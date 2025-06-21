@@ -1,0 +1,27 @@
+#!/usr/bin/env python3
+import sys
+import MDAnalysis as mda
+import numpy as np
+
+
+if __name__ == "__main__":
+    file_path = sys.argv[1]
+
+    # Load COGS
+    cogs = np.loadtxt(file_path)
+
+    # Create empty universe
+    u = mda.Universe.empty(
+        n_atoms=cogs.shape[0],
+        n_residues=cogs.shape[0],
+        trajectory=True,
+    )
+
+    # Add centers of geometry
+    u.add_TopologyAttr("type", ["Ar"] * cogs.shape[0])
+    u.add_TopologyAttr("name", [f"l{i+1}" for i in range(cogs.shape[0])])
+    u.add_TopologyAttr("resnum", [i + 1 for i in range(cogs.shape[0])])
+    u.atoms.positions = cogs
+
+    # Save PDB file
+    u.atoms.write("cogs.pdb")
