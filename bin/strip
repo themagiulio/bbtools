@@ -1,0 +1,23 @@
+#!/usr/bin/bash
+# Description: This script is a wrapper to cpptraj used for stripping a trajectory.
+# Version: 2025.07
+# Author: Giulio De Matteis
+# Usage: ./strip <topology> <trajectory_in> <strip_mask> <trajectory_out> <start> <stop> <offset>
+
+# Config
+TOP=$1
+TRJ=$2
+MSK=$3
+OUT=${4:-${TOP%%.*}.strip.pdb}
+START=${5:-1}
+STOP=${6:-last}
+OFFSET=${7:-1}
+
+# Run cpptraj
+cpptraj -p $TOP << EOF
+trajin $TRJ $START $STOP $OFFSET
+strip $MSK
+trajout $OUT
+run
+quit
+EOF
