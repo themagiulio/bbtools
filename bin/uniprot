@@ -1,0 +1,80 @@
+#!/usr/bin/env python3
+# Description: This script helps you search UniProt database.
+# Version: 2025.07
+# Author: Giulio De Matteis
+# Usage: ./uniprot
+
+import sys
+from urllib.error import HTTPError
+
+import requests
+import wget
+
+BASE_URL = "https://rest.uniprot.org/uniprotkb"
+
+
+def search():
+    if len(sys.argv) != 3:
+        print("Error: a query must be provided.")
+        return 1
+
+    # Get query
+    query = sys.argv[2]
+
+    # Send GET request
+    res = requests.get(
+        f"{BASE_URL}/search",
+        {
+            "query": query,
+        },
+    )
+
+    if not res.ok:
+        print("Error: cannot contact the UniProt server.")
+        return 1
+
+    # Print results
+    results = res.json()["results"]
+
+    for r in results:
+        print("Entry type: ", r["entryType"])
+        print("Primary accession: ", r["primaryAccession"])
+        print("UniProtkb Id: ", r["uniProtkbId"])
+        print(
+            "Protein full name: ",
+            r["proteinDescription"]["recommendedName"]["fullName"]["value"],
+        )
+        print("Organism: ", r["organism"]["scientificName"])
+        print()
+
+
+def get():
+    if len(sys.argv) != 3:
+        print("Error: an accession number must be provided.")
+        return 1
+
+    # Get accession
+    accession = sys.argv[2]
+
+    # Download fasta
+    try:
+        wget.download(f"{BASE_URL}/{accession}.fasta")
+    except HTTPError:
+        print("Error: cannot find a record with the provided accession.")
+        return 1
+
+
+def main():
+    if len(sys.argv) < 2:
+        print("Error: a command must be provided.")
+        return 1
+
+    match sys.argv[1]:
+        case "search":
+            return search()
+        case "get":
+            return get()
+
+
+if __name__ == "__main__":
+    sys.exit(main())
