@@ -1,0 +1,117 @@
+#!/usr/bin/env python3
+# Description: This script helps you clean a PDB file by stripping heterogens.
+# Version: 2025.07
+# Author: Giulio De Matteis
+# Usage: ./pdbclean --help
+
+import argparse
+import sys
+
+import pytraj as pt
+
+WATER_MASK = ":H2O,HOH,OH2,HHO,OHH,TIP,T3P,T4P,T5P,SOL,WAT,TIP2,TIP3,TIP4"
+PROTEIN_MASK = ":protein"
+NUCLEICACID_MASK = ":DA,DT,DG,DC,DI,RA,RU,RG,RC,RI"
+
+
+def main():
+    # Initialize argument parser
+    parser = argparse.ArgumentParser(
+        prog="pdbclean",
+        description="This script removes heterogens from a PDB.",
+    )
+
+    # Add arguments
+    parser.add_argument(
+        "-i",
+        "--in",
+        metavar="FILE",
+        type=str,
+        required=True,
+        help="PDB input file path.",
+    )
+    parser.add_argument(
+        "-o",
+        "--out",
+        metavar="FILE",
+        type=str,
+        help="PDB output file path.",
+    )
+    parser.add_argument(
+        "-sw",
+        "--strip-water",
+        default=False,
+        action="store_true",
+        help="Strip water molecules.",
+    )
+    parser.add_argument(
+        "-sh",
+        "--strip-heterogen",
+        default=False,
+        action="store_true",
+        help="Strip heterogens (everything not protein or nucleic acid).",
+    )
+    parser.add_argument(
+        "-r",
+        "--retain",
+        type=str,
+        help="Residues to retain (use cpptraj syntax).",
+    )
+    parser.add_argument(
+        "-v",
+        "--verbose",
+        default=False,
+        action="store_true",
+        help="Display input, output and strip string.",
+    )
+
+    # Parse arguments
+    args = parser.parse_args()
+
+    # Input and output files
+    pdb_in: str
+    pdb_out: str
+
+    if hasattr(args, "in"):
+        pdb_in = args.__dict__["in"]
+    else:
+        return 1
+
+    if args.out is not None:
+        pdb_out = args.out
+    else:
+        pdb_out = pdb_in.rsplit(".", 1)[0] + ".clean.pdb"
+
+    # Build strip string
+    strip_str = ""
+
+    if args.strip_water:
+        strip_str += f"({WATER_MASK})"
+    else:
+        strip_str += f"!({WATER_MASK})"
+
+    if args.strip_heterogen:
+        strip_str += f"&!({PROTEIN_MASK})&!({NUCLEICACID_MASK})"
+
+    if args.retain:
+        strip_str += f"&!({args.retain})"
+
+    # Log
+    if args.verbose:
+        print(f"PDB in: {pdb_in}")
+        print(f"PDB out: {pdb_out}")
+        print(f"Strip mask: {strip_str}")
+
+    # Load pdb, strip and write to disk
+    try:
+        traj = pt.load(pdb_in, top=pdb_in)
+        traj = pt.strip(traj, strip_str)
+        pt.write_traj(pdb_out, traj, overwrite=True)
+        print("Done!")
+    except (RuntimeError, IndexError):
+        print("Error: there was a problem while stripping the file.")
+        return 1
+
+
+if __name__ == "__main__":
+    sys.exit(main())
