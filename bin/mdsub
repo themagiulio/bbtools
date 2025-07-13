@@ -1,0 +1,54 @@
+#!/usr/bin/bash
+# Description: This script handles the submission of MDs.
+# Version: 2025.02.25
+# Author: Giulio De Matteis <hello@giuliodematte.is>
+# Usage: ./mdsub.sh <SCRIPT> <N_STEPS> <N_CHUNKS> <JOB_NAME>
+
+# Check for correct number of args
+if [ "$#" -gt 4 ] || [ $# -lt 3 ]; then
+  echo "Illegal number of parameters"
+  echo "Usage: $0 <SCRIPT> <N_STEPS> <N_CHUNKS> <JOB_NAME (optional)>"
+  exit 1
+fi
+
+# Config
+SCRIPT=$1
+N_STEPS=$2
+N_CHUNKS=$3
+JOB_NAME=${4:-"mdsub"}
+
+# Check that N_STEPS and N_CHUNKS are integer positive numbers
+if ! [[ "$N_STEPS" =~ ^[0-9]+$ ]] || ! [[ "$N_CHUNKS" =~ ^[0-9]+$ ]]; then
+  echo "Submission failed because either <N_STEPS> or <N_CHUNKS> were not parsed as integer positive numbers."
+  exit 1
+fi
+
+# Jobs loop
+RUNS_PER_CHUNK=$((N_STEPS / N_CHUNKS))
+REMAINDER=$((N_STEPS % N_CHUNKS))
+
+last_job="" # This variable will be set to the last submitted job
+
+for ((chunk = 1; chunk <= $N_CHUNKS; chunk++))
+do
+  # Set start and stop
+  START=$(( (chunk - 1) * RUNS_PER_CHUNK + 1 ))
+  STOP=$(( chunk * RUNS_PER_CHUNK ))
+
+  # Adjust the last chunk if there's a remainder
+  if [ $chunk -eq $N_CHUNKS ]; then
+      STOP=$(( STOP + REMAINDER ))
+  fi
+
+  # Submit job
+  if [ -z "${last_job}" ]; then
+    last_job=$(qsub -N "${JOB_NAME}_$chunk" -v "MDSUB_CHUNK=$chunk,MDSUB_START=$START,MDSUB_STOP=$STOP" $SCRIPT)
+  else
+    last_job=$(qsub -N "${JOB_NAME}_$chunk" -v "MDSUB_CHUNK=$chunk,MDSUB_START=$START,MDSUB_STOP=$STOP" -W depend=afterok:$last_job $SCRIPT)
+  fi
+
+  echo $last_job
+done
+
+exit 0
+
